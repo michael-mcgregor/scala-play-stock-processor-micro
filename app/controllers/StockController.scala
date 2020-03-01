@@ -11,7 +11,7 @@ import org.h2.jdbc.JdbcSQLException
 import play.api.data.Form
 import play.api.data.Forms.{mapping, nonEmptyText, optional}
 import play.api.libs.json.{JsValue, Json}
-import play.api.mvc.{MessagesAbstractController, MessagesControllerComponents, RequestHeader, WebSocket}
+import play.api.mvc.{Action, AnyContent, MessagesAbstractController, MessagesControllerComponents, RequestHeader, WebSocket}
 import service.{LoggerHelper, SlickAdapterService, StockDataIngestService}
 import util.SameOriginCheck
 import yahoofinance.Stock
@@ -20,7 +20,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
- * This class creates the actions and the websocket needed.
+ * Controller clas for interfacing with the database and web socket
  */
 class StockController @Inject()(userParentActor: ActorRef[UserParentActor.Create],
                                 cc: MessagesControllerComponents,
@@ -42,41 +42,37 @@ class StockController @Inject()(userParentActor: ActorRef[UserParentActor.Create
 
   /**
    * The index action.
+   *
+   * @return
    */
-  def stockIndex = Action { implicit request =>
+  def stockIndex: Action[AnyContent] = Action { implicit request =>
     Ok(views.html.index(stockForm))
   }
 
   /**
-   * The add stock action.
+   * Tries to add add the stock to be tracked. Will return message is stock is already tracked
+   * or if the stock doesn't exist.
    *
-   * This is asynchronous, since we're invoking the asynchronous methods on StockRepository.
+   * @return
    */
-  def addStockAction = Action.async { implicit request =>
-    // Bind the form first, then fold the result, passing a function to handle errors, and a function to handle succes.
+  def addStockAction(): Action[AnyContent] = Action.async { implicit request =>
     stockForm.bindFromRequest.fold(
-      // The error function. We return the index page with the error form, which will render the errors.
-      // We also wrap the result in a successful future, since this action is synchronous, but we're required to return
-      // a future because the person creation function returns a future.
       errorForm => {
-        Future.successful(Ok(views.html.index(stockForm)))
+        Future.successful(Ok(views.html.index(errorForm)))
       },
-      // There were no errors in the from, so create the stock.
       stock => {
         val stockData = stockDataIngestService.fetchStock(stock.id)
         if (stockData == null)
           Future (Redirect(routes.StockController.stockIndex).flashing("success" -> "stock doesn't exist"))
-
         else {
-          val stock = stockData.asInstanceOf[Stock]
-          val price = stock.getQuote().getPreviousClose
+          val stock: Stock = stockData.asInstanceOf[Stock]
+          val price: java.math.BigDecimal = stock.getQuote().getPreviousClose
 
           slickAdapterService.addStock(
             stock.getSymbol.toLowerCase(),
             stock.getName,
             if (price != null) price else -1
           ).map { _ =>
-            // If successful, we simply redirect to the index page.
             Redirect(routes.StockController.stockIndex).flashing("success" -> "stock created")
           }.recover {
             case _: JdbcSQLException =>
@@ -87,42 +83,44 @@ class StockController @Inject()(userParentActor: ActorRef[UserParentActor.Create
     )
   }
 
-  def deleteStockAction = Action.async { implicit request =>
-    // Bind the form first, then fold the result, passing a function to handle errors, and a function to handle succes.
+  /**
+   * Method will delete the stock by id
+   *
+   * @return
+   */
+  def deleteStockAction(): Action[AnyContent] = Action.async { implicit request =>
     stockForm.bindFromRequest.fold(
-      // The error function. We return the index page with the error form, which will render the errors.
-      // We also wrap the result in a successful future, since this action is synchronous, but we're required to return
-      // a future because the person creation function returns a future.
       errorForm => {
         Future.successful(Ok(views.html.index(errorForm)))
       },
-      // There were no errors in the from, so create the stock.
       stock => {
-        val id: String = stock.id.toLowerCase
-        slickAdapterService.deleteStock(stock.id).map { _ =>
-          // If successful, we simply redirect to the index page.
-          Redirect(routes.StockController.stockIndex).flashing("success" -> "stock.deleted")
+        val id: String = stock.id.toLowerCase()
+
+        slickAdapterService.deleteStock(id).map { _ =>
+          Redirect(routes.StockController.stockIndex).flashing("success" -> "stock deleted")
         }
       }
     )
   }
 
   /**
-   * A REST endpoint that gets all the stockIndex as JSON.
+   * retrieves all the stock info as JSON
+   *
+   * @return
    */
-  def getStocksAction = Action.async { implicit request =>
-
-//    val stocks = stockDataIngestService.batchFetchMultipleStocks(Array("INTC", "BABA", "TSLA", "AIR.PA", "YHOO"))
-//    val asdf = stockDataIngestService.fetchStockDataWithHistory("GOOG")
-//    val sdf = 3
-
+  def getStocksAction: Action[AnyContent] = Action.async { implicit request =>
     slickAdapterService.getStocks().map { stocks =>
       Ok(Json.toJson(stocks))
     }
   }
 
-  def getStockAction = Action(parse.form(stockForm)).async { implicit request =>
-    val id = request.body.id
+  /**
+   * retrieves the specific stock info as Json, lookup by symbol
+   *
+   * @return
+   */
+  def getStockAction: Action[StockForm] = Action(parse.form(stockForm)).async { implicit request =>
+    val id: String = request.body.id
 
     slickAdapterService.getStock(id).map { st =>
       Ok(Json.toJson(st))
@@ -168,10 +166,6 @@ class StockController @Inject()(userParentActor: ActorRef[UserParentActor.Create
 }
 
 /**
- * The create stock form.
- *
- * Generally for forms, you should define separate objects to your models, since forms very often need to present data
- * in a different way to your models.  In this case, it doesn't make sense to have an id parameter in the form, since
- * that is generated once it's created.
+ * The create stock form
  */
 case class StockForm(id: String, name: Option[String], currentValue: Option[String])
