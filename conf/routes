@@ -1,0 +1,13 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+GET     /                           controllers.StockController.stockIndex
+GET     /ws                         controllers.StockController.ws
+GET     /stock                      controllers.StockController.getStockAction
+GET     /stocks                     controllers.StockController.getStocksAction
+POST    /addStock                   controllers.StockController.addStockAction
+POST    /deleteStock                controllers.StockController.deleteStockAction
+
+# Map static resources from the /public folder to the /assets URL path
+GET     /assets/*file               controllers.Assets.at(path="/public", file)
