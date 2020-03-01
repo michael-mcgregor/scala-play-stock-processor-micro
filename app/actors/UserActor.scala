@@ -117,8 +117,9 @@ class UserActor @Inject()(id: String, stocksActor: ActorRef[GetStocks])(implicit
     val historySource = stock.history(stock.historicalData).map(
       sh => Json.toJson(sh)
     )
-//    val historySource = stock.history(stock.historicalData)
-    val updateSource = stock.update.map(su => Json.toJson(su))
+    val updateSource = stock.update.map(
+      su => Json.toJson(su)
+    )
     val stockSource = historySource.concat(updateSource)
 
     // Set up a flow that will let us pull out a killswitch for this specific stock,

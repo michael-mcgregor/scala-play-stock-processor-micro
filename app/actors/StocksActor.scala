@@ -44,8 +44,9 @@ object StocksActor {
               new Stock(
                 symbol,
                 StockQuote(symbol, StockPrice(previousPrice)),
-                StockQuote(symbol, StockPrice(currentPrice)),
-                asdf
+                StockQuote(symbol, StockPrice(12345)),
+                asdf,
+                stockDataIngestService
               )
             )
           })
