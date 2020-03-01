@@ -21,7 +21,7 @@ class StockDataIngestService extends StockDataIngest {
       case Success(value) => value
       case Failure(exception) => throw new RuntimeException(exception)
       case _ => throw new RuntimeException()
-    }// single request
+    }
 
     response
   }
@@ -45,7 +45,7 @@ class StockDataIngestService extends StockDataIngest {
       case Success(value) => value
       case Failure(exception) => throw new RuntimeException(exception)
       case _ => throw new RuntimeException()
-    }// single request
+    }
 
     response
   }
