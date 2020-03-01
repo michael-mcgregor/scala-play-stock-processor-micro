@@ -1,11 +1,9 @@
 package actors
 
-import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
-
-import collection.JavaConverters._
+import akka.actor.typed.{ActorRef, Behavior}
 import model._
-import service.{LoggerHelper, StockDataIngestService}
+import service.StockDataIngestService
 
 import scala.collection.{JavaConverters, mutable}
 
@@ -20,9 +18,14 @@ object StocksActor {
 
   final case class GetStocks(symbols: Set[StockSymbol], replyTo: ActorRef[Stocks])
 
+  /**
+   * called when stocks are added/removed
+   *
+   * @param stockDataIngestService StockDataIngestService
+   * @param stocksMap Map[StockSymbol, Stock]
+   * @return
+   */
   def apply(
-           i: Double,
-           j: Double,
            stockDataIngestService: StockDataIngestService = new StockDataIngestService,
            stocksMap: mutable.Map[StockSymbol, Stock] = mutable.HashMap()
   ): Behavior[GetStocks] = {
@@ -32,10 +35,7 @@ object StocksActor {
         case GetStocks(symbols, replyTo) =>
           val stocks = symbols.map(symbol => {
             val stockData = stockDataIngestService.fetchStockDataWithHistory(symbol.toString).asInstanceOf[yahoofinance.Stock]
-            val currentPrice = stockData.getHistory.get(stockData.getHistory().size() - 1).getAdjClose.doubleValue()
-            val previousPrice = stockData.getHistory.get(stockData.getHistory().size() - 2).getAdjClose.doubleValue()
-            LoggerHelper.logger.info(s"found values $currentPrice, $previousPrice, and ${stockData.getSymbol} ${stockData.getHistory.size()}")
-            val asdf: mutable.Buffer[StockPrice] = JavaConverters.asScalaBuffer(stockData.getHistory()).map(m =>
+            val history: mutable.Buffer[StockPrice] = JavaConverters.asScalaBuffer(stockData.getHistory()).map(m =>
                 StockPrice(m.getAdjClose.doubleValue()
               )
             )
@@ -43,9 +43,7 @@ object StocksActor {
               symbol,
               new Stock(
                 symbol,
-                StockQuote(symbol, StockPrice(previousPrice)),
-                StockQuote(symbol, StockPrice(12345)),
-                asdf,
+                history,
                 stockDataIngestService
               )
             )

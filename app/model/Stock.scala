@@ -12,24 +12,21 @@ import scala.concurrent.duration._
  * Stock class that is used to pass data to the front end
  *
  * @param symbol StockSymbol
- * @param oldPrice StockQuote
- * @param newPrice StockQuote
  * @param historicalData Buffer[StockPrice]
  * @param stockDataIngestService StockDataIngestService // not ideal but hard to get around in this case
  */
 class Stock(
              val symbol: StockSymbol,
-             val oldPrice: StockQuote = StockQuote(StockSymbol("goog"), StockPrice(100)),
-             val newPrice: StockQuote = StockQuote(StockSymbol("goog"), StockPrice(100)),
              val historicalData: mutable.Buffer[StockPrice],
              val stockDataIngestService: StockDataIngestService
            ) {
   private val source: Source[StockQuote, NotUsed] = {
-    Source.unfold(oldPrice) { _: StockQuote =>
+    Source.repeat{
       val updatedStockMeta = stockDataIngestService.fetchStock(symbol.toString).asInstanceOf[yahoofinance.Stock]
       val updatedPrice: Double = updatedStockMeta.getQuote().getPrice.doubleValue()
       val next: StockQuote = StockQuote(symbol, StockPrice(updatedPrice))
-      Some(next, next)
+
+      next
     }
   }
 

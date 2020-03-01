@@ -18,7 +18,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
 /**
- * Creates a user actor that sets up the websocket stream.  Although it's not required,
+ * Creates a user actor that sets up the websocket stream. Although it's not required,
  * having an actor manage the stream helps with lifecycle and monitoring, and also helps
  * with dependency injection through the AkkaGuiceSupport trait.
  *

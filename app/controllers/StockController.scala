@@ -20,7 +20,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
- * Controller clas for interfacing with the database and web socket
+ * Controller class for interfacing with the database and web socket
  */
 class StockController @Inject()(userParentActor: ActorRef[UserParentActor.Create],
                                 cc: MessagesControllerComponents,
