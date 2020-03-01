@@ -3,9 +3,7 @@ package model
 import akka.NotUsed
 import akka.stream.ThrottleMode
 import akka.stream.scaladsl.Source
-import yahoofinance.histquotes.HistoricalQuote
 
-import collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.duration._
 
@@ -25,21 +23,8 @@ class Stock(
     }
   }
 
-//  /**
-//   * Returns a source of stock history, containing a single element.
-//   */
-//  def history(n: Int): Source[StockHistory, NotUsed] = {
-//    source.grouped(n).map(sq => {
-//      var sdf = Vector(StockPrice(1), StockPrice(200), StockPrice(3), StockPrice(400), StockPrice(5), StockPrice(600))
-//      val d = sq.map(_.price)
-//      new StockHistory(symbol, sdf)
-//    }).take(1)
-//  }
-
   def history(values: mutable.Buffer[StockPrice]): Source[StockHistory, NotUsed] = {
     source.grouped(values.size).map(value => {
-//      var sdf = Vector(StockPrice(1.2), StockPrice(500), StockPrice(1000))
-//      val history = value.asInstanceOf[Double] for .map(price => StockPrice(price))
       new StockHistory(symbol, values)
     }).take(1)
   }
