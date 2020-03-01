@@ -12,7 +12,7 @@ class Module extends AbstractModule with AkkaGuiceSupport {
   val werr = new StockDataIngestService()
 
   override def configure(): Unit = {
-    bindTypedActor(StocksActor(i = 12, j = 122, stockDataIngestService = werr), "stocksActor")
+    bindTypedActor(StocksActor(stockDataIngestService = werr), "stocksActor")
     bindTypedActor(UserParentActor, "userParentActor")
     bind(classOf[UserActor.Factory]).toProvider(classOf[UserActorFactoryProvider])
   }

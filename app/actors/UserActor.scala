@@ -18,7 +18,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.Try
 
 /**
- * Creates a user actor that sets up the websocket stream.  Although it's not required,
+ * Creates a user actor that sets up the websocket stream. Although it's not required,
  * having an actor manage the stream helps with lifecycle and monitoring, and also helps
  * with dependency injection through the AkkaGuiceSupport trait.
  *
@@ -117,8 +117,9 @@ class UserActor @Inject()(id: String, stocksActor: ActorRef[GetStocks])(implicit
     val historySource = stock.history(stock.historicalData).map(
       sh => Json.toJson(sh)
     )
-//    val historySource = stock.history(stock.historicalData)
-    val updateSource = stock.update.map(su => Json.toJson(su))
+    val updateSource = stock.update.map(
+      su => Json.toJson(su)
+    )
     val stockSource = historySource.concat(updateSource)
 
     // Set up a flow that will let us pull out a killswitch for this specific stock,

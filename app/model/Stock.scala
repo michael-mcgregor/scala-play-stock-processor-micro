@@ -3,49 +3,74 @@ package model
 import akka.NotUsed
 import akka.stream.ThrottleMode
 import akka.stream.scaladsl.Source
+import service.StockDataIngestService
 
 import scala.collection.mutable
 import scala.concurrent.duration._
 
 /**
- * A stock is a source of stock quotes and a symbol.
+ * Stock class that is used to pass data to the front end
+ *
+ * @param symbol StockSymbol
+ * @param historicalData Buffer[StockPrice]
+ * @param stockDataIngestService StockDataIngestService // not ideal but hard to get around in this case
  */
 class Stock(
              val symbol: StockSymbol,
-             val oldPrice: StockQuote = StockQuote(StockSymbol("goog"), StockPrice(100)),
-             val newPrice: StockQuote = StockQuote(StockSymbol("goog"), StockPrice(100)),
-             val historicalData: mutable.Buffer[StockPrice]
+             val historicalData: mutable.Buffer[StockPrice],
+             val stockDataIngestService: StockDataIngestService
            ) {
   private val source: Source[StockQuote, NotUsed] = {
-    Source.unfold(oldPrice) { (last: StockQuote) =>
-      val next = newPrice
-      Some(next, next)
+    Source.repeat{
+      val updatedStockMeta = stockDataIngestService.fetchStock(symbol.toString).asInstanceOf[yahoofinance.Stock]
+      val updatedPrice: Double = updatedStockMeta.getQuote().getPrice.doubleValue()
+      val next: StockQuote = StockQuote(symbol, StockPrice(updatedPrice))
+
+      next
     }
   }
 
+  /**
+   * Sets up the history in the graph from the historical data pulled from the api
+   *
+   * @param values Buffer[StockPrice]
+   * @return
+   */
   def history(values: mutable.Buffer[StockPrice]): Source[StockHistory, NotUsed] = {
-    source.grouped(values.size).map(value => {
+    source.grouped(values.size).map(_ => {
       new StockHistory(symbol, values)
     }).take(1)
   }
 
   /**
-   * Provides a source that returns a stock quote every 75 milliseconds.
+   * Provides a source that returns a stock quote every 1000 milliseconds.
+   *
+   * @return
    */
   def update: Source[StockUpdate, NotUsed] = {
     source
-      .throttle(elements = 1, per = 200000000.millis, maximumBurst = 1, ThrottleMode.shaping)
+      .throttle(elements = 1, per = 1000.millis, maximumBurst = 1, ThrottleMode.shaping)
       .map(sq => new StockUpdate(sq.symbol, sq.price))
   }
 
   override val toString: String = s"Stock($symbol)"
 }
 
+/*******************************************
+ * *****************************************
+ * Supporting case classes for Stock class
+ *******************************************
+ *******************************************/
+
 case class StockQuote(symbol: StockSymbol, price: StockPrice)
 
-/** Value class for a stock symbol */
-class StockSymbol private (val raw: String) extends AnyVal {
-  override def toString: String = raw
+/**
+ * class that holds the symbol for the stock as string
+ *
+ * @param symbol String
+ */
+class StockSymbol private (val symbol: String) extends AnyVal {
+  override def toString: String = symbol
 }
 
 object StockSymbol {
@@ -58,13 +83,17 @@ object StockSymbol {
   }
 
   implicit val stockSymbolWrites: Writes[StockSymbol] = Writes {
-    (symbol: StockSymbol) => JsString(symbol.raw)
+    (symbol: StockSymbol) => JsString(symbol.symbol)
   }
 }
 
-/** Value class for stock price */
-class StockPrice private (val raw: Double) extends AnyVal {
-  override def toString: String = raw.toString
+/**
+ * class that holds the stock value as a double
+ *
+ * @param price Double
+ */
+class StockPrice private (val price: Double) extends AnyVal {
+  override def toString: String = price.toString
 }
 
 object StockPrice {
@@ -73,14 +102,19 @@ object StockPrice {
   def apply(raw: Double):StockPrice = new StockPrice(raw)
 
   implicit val stockPriceWrites: Writes[StockPrice] = Writes {
-    (price: StockPrice) => JsNumber(price.raw)
+    (price: StockPrice) => JsNumber(price.price)
   }
 }
 
-// Used for automatic JSON conversion
-// https://www.playframework.com/documentation/2.8.x/ScalaJson
-
-// JSON presentation class for stock history
+/**
+ * Used for automatic JSON conversion
+ * https://www.playframework.com/documentation/2.8.x/ScalaJson
+ *
+ * JSON presentation class for stock history
+ *
+ * @param symbol StockSymbol
+ * @param prices Seq[StockPrice]
+ */
 case class StockHistory(symbol: StockSymbol, prices: Seq[StockPrice])
 
 object StockHistory {
@@ -95,7 +129,12 @@ object StockHistory {
   }
 }
 
-// JSON presentation class for stock update
+/**
+ * JSON presentation class for stock update
+ *
+ * @param symbol StockSymbol
+ * @param price StockPrice
+ */
 case class StockUpdate(symbol: StockSymbol, price: StockPrice)
 
 object StockUpdate {
