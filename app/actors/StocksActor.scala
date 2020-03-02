@@ -39,10 +39,13 @@ object StocksActor {
                 StockPrice(m.getAdjClose.doubleValue()
               )
             )
+            val previousPrice = stockData.getHistory.get(stockData.getHistory().size() - 2).getAdjClose.doubleValue()
             stocksMap.getOrElseUpdate(
               symbol,
               new Stock(
                 symbol,
+                stockData.getName,
+                StockQuote(symbol, StockPrice(previousPrice)),
                 history,
                 stockDataIngestService
               )

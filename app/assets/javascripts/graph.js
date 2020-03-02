@@ -97,7 +97,7 @@
         var stockContainer = $("<div>")
             .addClass("stockContainer")
             .append(chartHolder)
-            .attr("data-content", message.symbol)
+            .attr("data-content", message.name + " -- " + message.symbol)
 
         $("#stocks")
             .prepend(stockContainer)
