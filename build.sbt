@@ -3,7 +3,7 @@ import play.core.PlayVersion.akkaVersion
 lazy val root = (project in file("."))
   .enablePlugins(PlayScala)
   .settings(
-    name := "my-play-scala-websocket-example",
+    name := "scala-play-stock-processor-micro",
     version := "1.0-SNAPSHOT",
     scalaVersion := "2.12.10",
     libraryDependencies ++= Seq(
