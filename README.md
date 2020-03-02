@@ -1,4 +1,4 @@
-# my-play-scala-websocket-example
+# scala-play-stock-processor-micro
 
 This is a modification of the open-source play-scala-websocket-example. This example uses `yahoofinance` apis to fetch 
 historical and real time data for specified stocks. It's backed by a lightweight mysql table that will persist tracked stocks.
