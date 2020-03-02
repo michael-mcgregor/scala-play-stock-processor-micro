@@ -17,16 +17,17 @@ import scala.concurrent.duration._
  */
 class Stock(
              val symbol: StockSymbol,
+             val name: String,
+             val oldPrice: StockQuote,
              val historicalData: mutable.Buffer[StockPrice],
              val stockDataIngestService: StockDataIngestService
            ) {
   private val source: Source[StockQuote, NotUsed] = {
-    Source.repeat{
+    Source.unfold(oldPrice) { _: StockQuote =>
       val updatedStockMeta = stockDataIngestService.fetchStock(symbol.toString).asInstanceOf[yahoofinance.Stock]
       val updatedPrice: Double = updatedStockMeta.getQuote().getPrice.doubleValue()
       val next: StockQuote = StockQuote(symbol, StockPrice(updatedPrice))
-
-      next
+      Some(next, next)
     }
   }
 
@@ -38,7 +39,7 @@ class Stock(
    */
   def history(values: mutable.Buffer[StockPrice]): Source[StockHistory, NotUsed] = {
     source.grouped(values.size).map(_ => {
-      new StockHistory(symbol, values)
+      new StockHistory(symbol, values, name)
     }).take(1)
   }
 
@@ -115,7 +116,7 @@ object StockPrice {
  * @param symbol StockSymbol
  * @param prices Seq[StockPrice]
  */
-case class StockHistory(symbol: StockSymbol, prices: Seq[StockPrice])
+case class StockHistory(symbol: StockSymbol, prices: Seq[StockPrice], name: String)
 
 object StockHistory {
   import play.api.libs.json._ // Combinator syntax
@@ -124,7 +125,8 @@ object StockHistory {
     override def writes(history: StockHistory): JsValue = Json.obj(
       "type" -> "stockhistory",
       "symbol" -> history.symbol,
-      "history" -> history.prices
+      "history" -> history.prices,
+      "name" -> history.name
     )
   }
 }
